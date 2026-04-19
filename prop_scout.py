@@ -52,12 +52,14 @@ for key,default in [("props",[]),("slip",[]),("results",[]),("api_key",""),("pag
 
 # ── API helpers ──────────────────────────────────────────────────────────────
 def get_api_key():
+    # Try Streamlit secrets first
     try:
         key = st.secrets["ANTHROPIC_API_KEY"]
         if key and key.strip():
             return key.strip()
     except Exception:
         pass
+    # Fall back to session state (sidebar input)
     return st.session_state.get("api_key","").strip()
 
 def get_client():
@@ -107,6 +109,7 @@ with st.sidebar:
     active_key = get_api_key()
     if active_key and active_key.startswith("sk-ant-"):
         st.success("API key loaded ✓", icon="🔑")
+        # Still allow override
         k = st.text_input("Override API Key", type="password", placeholder="Paste new key to override...", key="key_override")
         if k:
             st.session_state.api_key = k.strip()
@@ -184,7 +187,7 @@ Only include Grade A and B props. Be selective."""
                     if not blocks:
                         st.write(raw)
                     else:
-                        for block in blocks:
+                        for i, block in enumerate(blocks):
                             prop_m  = re.search(r"PROP:\s*(.+)", block, re.I)
                             grade_m = re.search(r"GRADE:\s*([ABCD])", block, re.I)
                             conf_m  = re.search(r"CONFIDENCE:\s*(\d+)", block, re.I)
@@ -202,7 +205,7 @@ Only include Grade A and B props. Be selective."""
                                     st.markdown(f"<span class='grade-{grade}'>{grade}</span>", unsafe_allow_html=True)
                                 st.caption(conf_bar(conf))
                                 if sum_m: st.write(sum_m.group(1).strip())
-                                if st.button("＋ Add to slip", key=f"d_add_{label[:25]}"):
+                                if st.button("＋ Add to slip", key=f"d_add_{label[:25]}_{i}"):
                                     player_name = label.split("—")[0].strip()
                                     st.session_state.slip.append({
                                         "id":datetime.now().timestamp(),"player":player_name,
