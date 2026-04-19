@@ -53,14 +53,20 @@ for key,default in [("props",[]),("slip",[]),("results",[]),("api_key",""),("pag
 # ── API helpers ──────────────────────────────────────────────────────────────
 def get_api_key():
     try:
-        return st.secrets["ANTHROPIC_API_KEY"]
+        key = st.secrets["ANTHROPIC_API_KEY"]
+        if key and key.strip():
+            return key.strip()
     except Exception:
-        return st.session_state.get("api_key","")
+        pass
+    return st.session_state.get("api_key","").strip()
 
 def get_client():
     key = get_api_key()
     if not key:
-        st.error("Enter your Anthropic API key in the sidebar.")
+        st.error("⚠️ No API key found. Enter your Anthropic API key in the sidebar.")
+        st.stop()
+    if not key.startswith("sk-ant-"):
+        st.error("⚠️ API key looks invalid — it should start with `sk-ant-`. Check for typos or extra spaces.")
         st.stop()
     return anthropic.Anthropic(api_key=key)
 
@@ -98,12 +104,18 @@ def get_section(text, label):
 with st.sidebar:
     st.markdown("## 🎯 PropFinder")
     st.caption("Sports & Esports Research Platform")
-    if not get_api_key():
-        k = st.text_input("Anthropic API Key", type="password", placeholder="sk-ant-...")
-        if k:
-            st.session_state.api_key = k
-    else:
+    active_key = get_api_key()
+    if active_key and active_key.startswith("sk-ant-"):
         st.success("API key loaded ✓", icon="🔑")
+        k = st.text_input("Override API Key", type="password", placeholder="Paste new key to override...", key="key_override")
+        if k:
+            st.session_state.api_key = k.strip()
+    else:
+        k = st.text_input("Anthropic API Key", type="password", placeholder="sk-ant-...", key="key_input")
+        if k:
+            st.session_state.api_key = k.strip()
+            if not k.strip().startswith("sk-ant-"):
+                st.warning("Key should start with `sk-ant-` — double check it.")
 
     st.divider()
     pages = ["🏠 Dashboard","🔍 Prop Analyzer","👤 Player Deep Dive",
